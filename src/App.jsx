@@ -1,5 +1,4 @@
-import React from 'react'
-import VisualizationFactory from './VisualizerFactory';
+import VisualizationFactory from "./visualizationFactory/VisualizationFactory";
 
 function App() {
   return (
@@ -54,4 +53,4 @@ function App() {
   );
 }
 
-export default App
+export default App;
