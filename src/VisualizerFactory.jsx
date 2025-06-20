@@ -1,54 +1,24 @@
-import React, { useEffect, useRef } from "react";
+// VisualizationFactory.jsx
+import React, { useRef, useEffect } from "react";
 import Highcharts from "highcharts";
 import HighchartsReact from "highcharts-react-official";
 import * as Grid from "@highcharts/grid-lite/grid-lite";
 import "@highcharts/grid-lite/css/grid.css";
 
-const VisualizationFactory = ({
-  type = "line",
-  data,
-  options = {},
-  gridColumns = [],
-  title = "Data Visualization",
-}) => {
-  // Common configuration for all Highcharts
-  const baseOptions = {
-    title: { text: title },
-    accessibility: { enabled: true },
-    credits: { enabled: false },
-    ...options,
-  };
-
-  // Handle different visualization types
-  switch (type) {
-    case "line":
-      return renderLineChart(data, baseOptions);
-
-    case "pie":
-      return renderPieChart(data, baseOptions);
-
-    case "table":
-      return renderDataGrid(type, title, data);
-
-    default:
-      return <div>Unsupported visualization type: {type}</div>;
-  }
-};
-
-// Line Chart Renderer
-const renderLineChart = (seriesData, options) => {
+// Line Chart Strategy
+const lineChartStrategy = ({ data, title, options }) => {
   const chartOptions = {
     ...options,
     chart: { type: "line" },
     xAxis: { type: "category" },
-    series: seriesData,
+    series: data,
+    title: { text: title },
   };
-
   return <HighchartsReact highcharts={Highcharts} options={chartOptions} />;
 };
 
-// Pie Chart Renderer
-const renderPieChart = (seriesData, options) => {
+// Pie Chart Strategy
+const pieChartStrategy = ({ data, title, options }) => {
   const chartOptions = {
     ...options,
     chart: { type: "pie" },
@@ -63,52 +33,69 @@ const renderPieChart = (seriesData, options) => {
       {
         name: "Data",
         colorByPoint: true,
-        data: seriesData,
+        data,
       },
     ],
+    title: { text: title },
   };
-
   return <HighchartsReact highcharts={Highcharts} options={chartOptions} />;
 };
 
-// Data Grid Renderer
-const renderDataGrid = (type, title, data) => {
-  function transformDataToColumns(data) {
+// Table/Grid Strategy
+const tableStrategy = ({ data, title }) => {
+  const containerRef = useRef(null);
+
+  const transformDataToColumns = (data) => {
     const columns = {};
-    if (!data || data.length === 0) return columns;
-
-    Object.keys(data[0]).forEach((key) => {
-      columns[key] = [];
-    });
-
+    if (!data?.length) return columns;
+    Object.keys(data[0]).forEach((key) => (columns[key] = []));
     data.forEach((row) => {
       Object.entries(row).forEach(([key, value]) => {
         columns[key].push(value);
       });
     });
-
     return columns;
-  }
-
-  const containerRef = useRef(null);
+  };
 
   useEffect(() => {
     if (containerRef.current && data) {
       const columns = transformDataToColumns(data);
-      const config = {
-        caption: {
-          text: title,
-        },
-        dataTable: {
-          columns: columns,
-        },
-      };
-      Grid.grid(containerRef.current, config);
+      Grid.grid(containerRef.current, {
+        caption: { text: title },
+        dataTable: { columns },
+      });
     }
   }, [data]);
 
   return <div ref={containerRef} />;
 };
 
-export default VisualizationFactory;
+// Strategy Map
+const strategyMap = {
+  line: lineChartStrategy,
+  pie: pieChartStrategy,
+  table: tableStrategy,
+};
 
+const VisualizationFactory = ({
+  type = "line",
+  data,
+  title = "Data Visualization",
+  options = {},
+}) => {
+  const strategy = strategyMap[type];
+
+  if (!strategy) {
+    return <div>Unsupported visualization type: {type}</div>;
+  }
+
+  const baseOptions = {
+    accessibility: { enabled: true },
+    credits: { enabled: false },
+    ...options,
+  };
+
+  return strategy({ data, title, options: baseOptions });
+};
+
+export default VisualizationFactory;
